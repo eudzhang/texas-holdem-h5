@@ -14,11 +14,28 @@
           <p class="eyebrow">Online Texas Hold'em</p>
           <h1>联机德州扑克牌</h1>
         </div>
+        <button id="homeBtn" class="home-button" type="button" hidden>返回首页</button>
         <button id="startHandBtn" class="icon-button" type="button" aria-label="开始新手牌">▶</button>
       </div>
 
       <div id="lobby" class="lobby">
+        <div id="modeCard" class="lobby-card mode-card">
+          <h2>选择玩法</h2>
+          <p>先练手，或直接开房间和朋友打一局。</p>
+          <div class="mode-actions">
+            <button id="aiModeBtn" type="button">
+              <strong>AI 练习</strong>
+              <span>你对 3 个电脑玩家</span>
+            </button>
+            <button id="onlineModeBtn" type="button">
+              <strong>好友联机</strong>
+              <span>创建房间，复制链接邀请朋友</span>
+            </button>
+          </div>
+        </div>
+
         <div class="lobby-card">
+          <button id="backToModeBtn" class="text-button" type="button">返回玩法选择</button>
           <h2>和朋友开一桌</h2>
           <p>创建房间后，把房间号或网页链接发给朋友。2 到 4 人到齐后，由房主开始发牌。</p>
           <label for="nameInput">昵称</label>
@@ -40,6 +57,7 @@
       <div class="opponents" id="opponents"></div>
 
       <div class="board-wrap">
+        <div id="currentAction" class="current-action">等待入座</div>
         <div class="pot">
           <div id="potChips" class="chip-stack pot-stack" aria-hidden="true"></div>
           <div>
@@ -52,14 +70,7 @@
       </div>
 
       <div class="player-zone">
-        <div id="playerInfo" class="player-info">
-          <div id="playerChips" class="chip-stack player-stack" aria-hidden="true"></div>
-          <div class="seat-text">
-            <span id="playerName" class="name">你</span>
-            <span id="playerStack" class="stack">筹码 0</span>
-            <span id="playerBet" class="bet">下注 0</span>
-          </div>
-        </div>
+        <div id="playerInfo" class="player-info"></div>
         <div class="hand" id="playerHand" aria-label="你的手牌"></div>
       </div>
     </section>
@@ -68,6 +79,11 @@
       <div class="status">
         <h2 id="statusTitle">准备联机</h2>
         <p id="statusText">创建或加入房间后即可开始。每个人只会看到自己的手牌。</p>
+      </div>
+
+      <div class="decision-card">
+        <span>本轮需跟</span>
+        <strong id="toCall">0</strong>
       </div>
 
       <div class="actions">
@@ -85,6 +101,11 @@
       <div class="log" id="log" aria-live="polite"></div>
     </aside>
   </main>
+
+  <div class="rotate-hint" aria-hidden="true">
+    <strong>请横屏游玩</strong>
+    <span>旋转手机后，牌桌和按钮会完整显示。</span>
+  </div>
 
   <script src="game.js"></script>
 </body>

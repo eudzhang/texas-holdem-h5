@@ -57,6 +57,8 @@ function createRoom(body) {
     currentBet: 0,
     currentTurn: -1,
     handOver: true,
+    winners: [],
+    resultText: "",
     log: ["房间已创建，等待朋友加入。"]
   };
   rooms.set(roomCode, room);
@@ -93,6 +95,8 @@ function startHand(body) {
   room.street = 0;
   room.currentBet = 0;
   room.handOver = false;
+  room.winners = [];
+  room.resultText = "";
   for (let round = 0; round < 2; round++) {
     room.players.forEach((player) => player.hand.push(room.deck.pop()));
   }
@@ -193,13 +197,17 @@ function showdown(room) {
   room.handOver = true;
   room.currentTurn = -1;
   const winners = tied.map((entry) => entry.player.name).join("、");
-  addLog(room, `摊牌：${winners} 凭 ${HAND_NAMES[top.score.rank]} 赢得 ${share * tied.length}。`);
+  room.winners = tied.map((entry) => entry.player.id);
+  room.resultText = `${winners} 凭 ${HAND_NAMES[top.score.rank]} 赢得 ${share * tied.length}`;
+  addLog(room, `摊牌：${room.resultText}。`);
 }
 
 function award(room, player, text) {
   player.stack += room.pot;
   room.handOver = true;
   room.currentTurn = -1;
+  room.winners = [player.id];
+  room.resultText = text.replace(/。$/, "");
   addLog(room, text);
 }
 
@@ -273,6 +281,7 @@ function snapshot(room, viewerId) {
       connected: player.connected,
       isMe: player.id === viewerId,
       isTurn: index === room.currentTurn,
+      isWinner: room.winners.includes(player.id),
       hand: visibleHand(room, player, viewerId)
     })),
     community: room.community.map(cardView),
@@ -280,6 +289,7 @@ function snapshot(room, viewerId) {
     phase: room.handOver ? "等待开局" : STREETS[room.street],
     currentBet: room.currentBet,
     canAct,
+    resultText: room.handOver ? room.resultText : "",
     statusTitle: statusTitle(room, viewerId),
     statusText: statusText(room, viewerId),
     log: room.log.slice(0, 14)
