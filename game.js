@@ -7,6 +7,7 @@ const els = {
   backToMode: $("backToModeBtn"),
   nameInput: $("nameInput"),
   maxPlayers: $("maxPlayersInput"),
+  playerCountOptions: Array.from(document.querySelectorAll(".player-count-option")),
   roomInput: $("roomInput"),
   createRoom: $("createRoomBtn"),
   joinRoom: $("joinRoomBtn"),
@@ -659,6 +660,12 @@ els.aiMode.addEventListener("click", enterAiMode);
 els.onlineMode.addEventListener("click", enterOnlineMode);
 els.backToMode.addEventListener("click", backToModeSelect);
 els.home.addEventListener("click", backToModeSelect);
+els.playerCountOptions.forEach((button) => {
+  button.addEventListener("click", () => {
+    els.maxPlayers.value = button.dataset.count;
+    els.playerCountOptions.forEach((option) => option.classList.toggle("active", option === button));
+  });
+});
 els.createRoom.addEventListener("click", createRoom);
 els.joinRoom.addEventListener("click", joinRoom);
 els.copyLink.addEventListener("click", copyLink);
