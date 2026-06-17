@@ -46,9 +46,11 @@ server.listen(PORT, () => {
 function createRoom(body) {
   const roomCode = makeRoomCode();
   const player = makePlayer(body.name || "房主");
+  const maxPlayers = clamp(Number(body.maxPlayers || 4), 2, 8);
   const room = {
     roomCode,
     hostId: player.id,
+    maxPlayers,
     players: [player],
     deck: [],
     community: [],
@@ -68,7 +70,7 @@ function createRoom(body) {
 
 function joinRoom(body) {
   const room = getRoom(body.roomCode);
-  if (room.players.length >= 4) throw new Error("房间已满。");
+  if (room.players.length >= room.maxPlayers) throw new Error("房间已满。");
   if (!room.handOver && room.players.some((player) => player.hand.length)) throw new Error("本手牌进行中，请下一手再加入。");
   const player = makePlayer(body.name || "玩家");
   room.players.push(player);
@@ -271,6 +273,7 @@ function snapshot(room, viewerId) {
   const canAct = Boolean(me && current && current.id === me.id && !room.handOver);
   return {
     roomCode: room.roomCode,
+    maxPlayers: room.maxPlayers,
     isHost: room.hostId === viewerId,
     players: room.players.map((player, index) => ({
       name: player.name,

@@ -6,6 +6,7 @@ const els = {
   onlineMode: $("onlineModeBtn"),
   backToMode: $("backToModeBtn"),
   nameInput: $("nameInput"),
+  maxPlayers: $("maxPlayersInput"),
   roomInput: $("roomInput"),
   createRoom: $("createRoomBtn"),
   joinRoom: $("joinRoomBtn"),
@@ -65,7 +66,7 @@ async function createRoom() {
   try {
     appMode = "online";
     const name = getName();
-    const data = await api("/api/create", { name });
+    const data = await api("/api/create", { name, maxPlayers: Number(els.maxPlayers.value) });
     saveSession(data.roomCode, data.playerId, name);
     connect(data.roomCode, data.playerId);
   } catch (error) {
@@ -148,8 +149,9 @@ async function startHand() {
 function render(data) {
   const me = data.players.find((player) => player.isMe);
   const joined = Boolean(data.roomCode && data.roomCode !== "未加入");
+  document.body.dataset.players = String(data.players.length || 0);
   els.lobby.hidden = joined;
-  els.roomCode.textContent = data.roomCode;
+  els.roomCode.textContent = data.maxPlayers ? `${data.roomCode} · ${data.players.length}/${data.maxPlayers}人` : data.roomCode;
   els.copyLink.hidden = appMode === "ai";
   els.copyLink.disabled = appMode === "ai" || !joined;
   els.startHand.disabled = appMode !== "ai" && (!joined || !data.isHost || data.players.length < 2);
@@ -428,6 +430,7 @@ function renderAi() {
   const me = aiGame.players[0];
   render({
     roomCode: "AI练习",
+    maxPlayers: 4,
     players: aiGame.players.map((player, index) => ({
       name: player.name,
       stack: player.stack,
@@ -621,6 +624,7 @@ function showLobby(title, text) {
 function renderEmpty(title, text) {
   render({
     roomCode: appMode === "ai" ? "AI练习" : "未加入",
+    maxPlayers: appMode === "ai" ? 4 : 0,
     players: [{ name: "你", stack: 0, bet: 0, hand: [], isMe: true, connected: true }],
     community: [],
     pot: 0,

@@ -33,7 +33,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -42,13 +43,19 @@ button {
   cursor: pointer;
 }
 
-input {
+input,
+select {
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 10px;
   color: #fff;
   background: rgba(255, 255, 255, .08);
   outline: 0;
+}
+
+select {
+  min-height: 42px;
+  padding: 0 12px;
 }
 
 [hidden] {
@@ -231,7 +238,8 @@ h1 {
   font-size: 13px;
 }
 
-.lobby-card input {
+.lobby-card input,
+.lobby-card select {
   min-height: 42px;
   padding: 0 12px;
 }
@@ -1198,4 +1206,66 @@ body::before {
 
 .card {
   box-shadow: 0 8px 18px rgba(0, 0, 0, .34);
+}
+
+body[data-players="5"] .opponents,
+body[data-players="6"] .opponents,
+body[data-players="7"] .opponents,
+body[data-players="8"] .opponents {
+  top: 20%;
+  left: 5%;
+  right: 5%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.2vh 1.2vw;
+}
+
+body[data-players="5"] .seat,
+body[data-players="6"] .seat,
+body[data-players="7"] .seat,
+body[data-players="8"] .seat {
+  width: auto;
+}
+
+body[data-players="5"] .opponent-meta,
+body[data-players="6"] .opponent-meta,
+body[data-players="7"] .opponent-meta,
+body[data-players="8"] .opponent-meta {
+  padding: 6px 8px;
+  gap: 6px;
+  font-size: clamp(10px, .72vw, 12px);
+}
+
+body[data-players="5"] .seat-money-grid,
+body[data-players="6"] .seat-money-grid,
+body[data-players="7"] .seat-money-grid,
+body[data-players="8"] .seat-money-grid {
+  font-size: clamp(9px, .62vw, 11px);
+}
+
+body[data-players="5"] .seat-money-grid strong,
+body[data-players="6"] .seat-money-grid strong,
+body[data-players="7"] .seat-money-grid strong,
+body[data-players="8"] .seat-money-grid strong {
+  font-size: clamp(12px, .9vw, 16px);
+}
+
+body[data-players="5"] .seat-stack,
+body[data-players="6"] .seat-stack,
+body[data-players="7"] .seat-stack,
+body[data-players="8"] .seat-stack {
+  --chip-size: 22px;
+  height: 28px;
+}
+
+body[data-players="5"] .seat .card,
+body[data-players="6"] .seat .card,
+body[data-players="7"] .seat .card,
+body[data-players="8"] .seat .card {
+  width: clamp(32px, 3.7vw, 58px);
+}
+
+body[data-players="7"] .board-wrap,
+body[data-players="8"] .board-wrap {
+  top: 59%;
 }
