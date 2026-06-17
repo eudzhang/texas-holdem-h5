@@ -11,9 +11,12 @@ const els = {
   opponents: $("opponents"),
   community: $("community"),
   playerHand: $("playerHand"),
+  playerInfo: $("playerInfo"),
+  playerChips: $("playerChips"),
   playerName: $("playerName"),
   playerStack: $("playerStack"),
   playerBet: $("playerBet"),
+  potChips: $("potChips"),
   pot: $("pot"),
   phase: $("phase"),
   statusTitle: $("statusTitle"),
@@ -137,6 +140,9 @@ function render(data) {
   els.playerName.textContent = me?.name || "你";
   els.playerStack.textContent = `筹码 ${me?.stack || 0}`;
   els.playerBet.textContent = `下注 ${me?.bet || 0}`;
+  els.playerChips.innerHTML = renderChipStack(me?.stack || 0, "player");
+  els.playerInfo.classList.toggle("turn", Boolean(me?.isTurn));
+  els.potChips.innerHTML = renderChipStack(data.pot, "pot");
   els.pot.textContent = data.pot;
   els.phase.textContent = data.phase;
   const need = Math.max(0, data.currentBet - (me?.bet || 0));
@@ -157,14 +163,29 @@ function renderOpponent(player) {
   return `
     <article class="seat${turn}">
       <div class="opponent-meta">
+        <div class="chip-stack seat-stack">${renderChipStack(player.stack, "seat")}</div>
+        <div class="seat-text">
         <span class="name">${escapeHtml(player.name)}</span>
         <span class="stack">筹码 ${player.stack}</span>
         <span class="bet">下注 ${player.bet}</span>
         <span class="state ${stateClass}">${stateText}</span>
+        </div>
+        ${player.bet > 0 ? `<div class="wager">${renderChipStack(player.bet, "wager")}<b>${player.bet}</b></div>` : ""}
       </div>
       <div class="cards">${renderCards(player.hand, true, 2)}</div>
     </article>
   `;
+}
+
+function renderChipStack(amount, variant) {
+  const value = Math.max(0, Number(amount) || 0);
+  const count = Math.min(6, Math.max(value > 0 ? 1 : 0, Math.ceil(value / 220)));
+  const colors = ["gold", "red", "blue", "green", "black", "cream"];
+  return Array.from({ length: count }, (_, index) => {
+    const color = colors[(index + (variant === "pot" ? 1 : 0)) % colors.length];
+    const lift = variant === "wager" ? index * 3 : index * 4;
+    return `<i class="chip ${color}" style="--lift:${lift}px"></i>`;
+  }).join("");
 }
 
 function renderCards(cards, visible, slots) {
