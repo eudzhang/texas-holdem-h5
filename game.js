@@ -31,6 +31,7 @@ const STORAGE_KEY = "online-texas-room";
 let session = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
 let source;
 let snapshot;
+let reconnectTimer;
 
 const urlRoom = new URLSearchParams(location.search).get("room");
 if (urlRoom) els.roomInput.value = urlRoom.toUpperCase();
@@ -80,6 +81,8 @@ function saveSession(roomCode, playerId, name) {
 
 function connect(roomCode, playerId) {
   if (source) source.close();
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  snapshot = null;
   source = new EventSource(`/events?room=${encodeURIComponent(roomCode)}&player=${encodeURIComponent(playerId)}`);
   source.addEventListener("state", (event) => {
     snapshot = JSON.parse(event.data);
@@ -89,6 +92,12 @@ function connect(roomCode, playerId) {
     els.statusTitle.textContent = "连接中断";
     els.statusText.textContent = "正在尝试重连。如果服务器刚启动，请稍等几秒。";
   };
+  reconnectTimer = setTimeout(() => {
+    if (!snapshot) {
+      clearSession();
+      showLobby("房间已失效", "服务器重启后旧房间会清空。请重新创建房间，再把新链接发给朋友。");
+    }
+  }, 3500);
 }
 
 async function sendAction(type) {
@@ -116,10 +125,11 @@ async function startHand() {
 
 function render(data) {
   const me = data.players.find((player) => player.isMe);
-  els.lobby.hidden = true;
+  const joined = Boolean(data.roomCode && data.roomCode !== "未加入");
+  els.lobby.hidden = joined;
   els.roomCode.textContent = data.roomCode;
-  els.copyLink.disabled = false;
-  els.startHand.disabled = !data.isHost || data.players.length < 2;
+  els.copyLink.disabled = !joined;
+  els.startHand.disabled = !joined || !data.isHost || data.players.length < 2;
   els.startHand.title = data.isHost ? "开始新手牌" : "只有房主可以开始";
   els.opponents.innerHTML = data.players.filter((player) => !player.isMe).map(renderOpponent).join("");
   els.community.innerHTML = renderCards(data.community, true, 5);
@@ -175,19 +185,39 @@ function getName() {
 }
 
 async function copyLink() {
-  if (!session) return;
-  const url = `${location.origin}${location.pathname}?room=${session.roomCode}`;
+  const roomCode = snapshot?.roomCode || session?.roomCode;
+  if (!roomCode || roomCode === "未加入") {
+    showLobby("还没有房间", "请先输入昵称并点击“创建房间”，生成房间号后再复制链接。");
+    return;
+  }
+  const url = `${location.origin}${location.pathname}?room=${roomCode}`;
   try {
     await navigator.clipboard.writeText(url);
     showError("房间链接已复制。");
   } catch {
-    showError(`房间号：${session.roomCode}`);
+    showError(`复制失败时，直接把这个房间号发给朋友：${roomCode}`);
   }
 }
 
 function showError(message) {
   els.statusTitle.textContent = "提示";
   els.statusText.textContent = message;
+}
+
+function showLobby(title, text) {
+  els.lobby.hidden = false;
+  els.roomCode.textContent = "未加入";
+  els.copyLink.disabled = true;
+  els.startHand.disabled = true;
+  els.statusTitle.textContent = title;
+  els.statusText.textContent = text;
+}
+
+function clearSession() {
+  if (source) source.close();
+  source = null;
+  session = null;
+  localStorage.removeItem(STORAGE_KEY);
 }
 
 function escapeHtml(value) {
