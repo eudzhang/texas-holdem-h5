@@ -136,6 +136,17 @@ function playerAction(body) {
     });
     player.acted = true;
     addLog(room, `${player.name} 加注到 ${player.bet}。`);
+  } else if (body.type === "allin") {
+    const pushed = player.stack;
+    pay(room, player, player.stack);
+    if (player.bet > room.currentBet) {
+      room.currentBet = player.bet;
+      room.players.forEach((seat) => {
+        if (!seat.folded && !seat.allIn && seat.id !== player.id) seat.acted = false;
+      });
+    }
+    player.acted = true;
+    addLog(room, `${player.name} 推了 ${pushed}。`);
   } else {
     throw new Error("未知操作。");
   }
@@ -151,7 +162,13 @@ function advance(room) {
     while (room.community.length < 5) room.community.push(room.deck.pop());
     return showdown(room);
   }
-  if (isBettingRoundClosed(room)) return nextStreet(room);
+  if (isBettingRoundClosed(room)) {
+    if (shouldRunOutAllIn(room)) {
+      while (room.community.length < 5) room.community.push(room.deck.pop());
+      return showdown(room);
+    }
+    return nextStreet(room);
+  }
   room.currentTurn = nextActiveIndex(room, room.currentTurn);
 }
 
@@ -159,6 +176,11 @@ function isBettingRoundClosed(room) {
   return room.players
     .filter((player) => !player.folded && !player.allIn)
     .every((player) => player.acted && player.bet === room.currentBet);
+}
+
+function shouldRunOutAllIn(room) {
+  const active = room.players.filter((player) => !player.folded);
+  return active.some((player) => player.allIn) && active.filter((player) => !player.allIn).length <= 1;
 }
 
 function nextStreet(room) {

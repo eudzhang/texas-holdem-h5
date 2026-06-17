@@ -652,7 +652,7 @@ h1 {
 
 .actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -675,6 +675,12 @@ h1 {
 .actions button:nth-child(3) {
   color: var(--ink);
   background: var(--gold);
+}
+
+.actions .all-in-button {
+  color: #fff8e8;
+  background: linear-gradient(180deg, #e43f32 0%, #9b1612 100%);
+  box-shadow: 0 0 0 1px rgba(255, 207, 105, .38), 0 8px 20px rgba(185, 25, 18, .28);
 }
 
 .actions button:disabled,
@@ -813,7 +819,7 @@ h1 {
 
 @media (max-width: 480px) {
   .actions {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .actions button {
@@ -1164,7 +1170,35 @@ body::before {
 
 .table {
   inset: 0;
-  background: url("assets/table-background.png") center / cover no-repeat;
+  background: url("assets/table-4.png") center / cover no-repeat;
+}
+
+body[data-max-players="2"] .table {
+  background-image: url("assets/table-2.png");
+}
+
+body[data-max-players="3"] .table {
+  background-image: url("assets/table-3.png");
+}
+
+body[data-max-players="4"] .table {
+  background-image: url("assets/table-4.png");
+}
+
+body[data-max-players="5"] .table {
+  background-image: url("assets/table-5.png");
+}
+
+body[data-max-players="6"] .table {
+  background-image: url("assets/table-6.png");
+}
+
+body[data-max-players="7"] .table {
+  background-image: url("assets/table-7.png");
+}
+
+body[data-max-players="8"] .table {
+  background-image: url("assets/table-8.png");
 }
 
 .table::before,

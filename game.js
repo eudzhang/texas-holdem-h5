@@ -29,6 +29,7 @@ const els = {
   fold: $("foldBtn"),
   call: $("callBtn"),
   raise: $("raiseBtn"),
+  allIn: $("allInBtn"),
   raiseAmount: $("raiseAmount"),
   raiseValue: $("raiseValue"),
   log: $("log")
@@ -151,6 +152,7 @@ function render(data) {
   const me = data.players.find((player) => player.isMe);
   const joined = Boolean(data.roomCode && data.roomCode !== "未加入");
   document.body.dataset.players = String(data.players.length || 0);
+  document.body.dataset.maxPlayers = String(data.maxPlayers || (appMode === "ai" ? 4 : Number(els.maxPlayers.value || 4)));
   els.lobby.hidden = joined;
   els.roomCode.textContent = data.maxPlayers ? `${data.roomCode} · ${data.players.length}/${data.maxPlayers}人` : data.roomCode;
   els.copyLink.hidden = appMode === "ai";
@@ -175,6 +177,7 @@ function render(data) {
   els.fold.disabled = !canAct;
   els.call.disabled = !canAct;
   els.raise.disabled = !canAct || (me?.stack || 0) <= need;
+  els.allIn.disabled = !canAct || (me?.stack || 0) <= 0;
   els.statusTitle.textContent = data.statusTitle;
   els.statusText.textContent = data.statusText;
   els.log.innerHTML = data.log.map((line) => `<p>${escapeHtml(line)}</p>`).join("");
@@ -331,6 +334,11 @@ function aiPlayerAction(type) {
     aiPay(me, need + raiseBy);
     aiGame.currentBet = me.bet;
     aiLog(`你加注到 ${me.bet}。`);
+  } else if (type === "allin") {
+    const pushed = me.stack;
+    aiPay(me, me.stack);
+    if (me.bet > aiGame.currentBet) aiGame.currentBet = me.bet;
+    aiLog(`你推了 ${pushed}。`);
   }
   if (aiOnlyOneLeft()) return renderAi();
   aiRunOpponents();
@@ -344,6 +352,12 @@ function aiRunOpponents() {
   if (!aiGame.players[0].folded && aiGame.currentBet > aiGame.players[0].bet) {
     aiGame.currentTurn = 0;
     aiLog("电脑加注，行动回到你。");
+    renderAi();
+    return;
+  }
+  if (aiShouldRunOutAllIn()) {
+    while (aiGame.community.length < 5) aiGame.community.push(aiGame.deck.pop());
+    aiShowdown();
     renderAi();
     return;
   }
@@ -427,6 +441,11 @@ function aiOnlyOneLeft() {
   return false;
 }
 
+function aiShouldRunOutAllIn() {
+  const active = aiGame.players.filter((player) => !player.folded);
+  return active.some((player) => player.allIn) && active.filter((player) => !player.allIn).length <= 1;
+}
+
 function renderAi() {
   const me = aiGame.players[0];
   render({
@@ -448,7 +467,7 @@ function renderAi() {
     pot: aiGame.pot,
     phase: aiGame.handOver ? "本手结束" : STREETS[aiGame.street],
     currentBet: aiGame.currentBet,
-    canAct: !aiGame.handOver && aiGame.currentTurn === 0 && !me.folded,
+    canAct: !aiGame.handOver && aiGame.currentTurn === 0 && !me.folded && !me.allIn,
     isHost: true,
     resultText: aiGame.handOver ? aiGame.resultText : "",
     statusTitle: aiGame.handOver ? "AI 练习结束" : (aiGame.currentTurn === 0 ? "轮到你行动" : "AI 思考中"),
@@ -625,7 +644,7 @@ function showLobby(title, text) {
 function renderEmpty(title, text) {
   render({
     roomCode: appMode === "ai" ? "AI练习" : "未加入",
-    maxPlayers: appMode === "ai" ? 4 : 0,
+    maxPlayers: appMode === "ai" ? 4 : Number(els.maxPlayers.value || 4),
     players: [{ name: "你", stack: 0, bet: 0, hand: [], isMe: true, connected: true }],
     community: [],
     pot: 0,
@@ -663,6 +682,7 @@ els.home.addEventListener("click", backToModeSelect);
 els.playerCountOptions.forEach((button) => {
   button.addEventListener("click", () => {
     els.maxPlayers.value = button.dataset.count;
+    document.body.dataset.maxPlayers = button.dataset.count;
     els.playerCountOptions.forEach((option) => option.classList.toggle("active", option === button));
   });
 });
@@ -673,6 +693,7 @@ els.startHand.addEventListener("click", startHand);
 els.fold.addEventListener("click", () => sendAction("fold"));
 els.call.addEventListener("click", () => sendAction("call"));
 els.raise.addEventListener("click", () => sendAction("raise"));
+els.allIn.addEventListener("click", () => sendAction("allin"));
 els.raiseAmount.addEventListener("input", () => {
   els.raiseValue.textContent = els.raiseAmount.value;
 });
