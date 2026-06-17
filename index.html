@@ -41,18 +41,24 @@
 
       <div class="board-wrap">
         <div class="pot">
-          <span>底池</span>
-          <strong id="pot">0</strong>
+          <div id="potChips" class="chip-stack pot-stack" aria-hidden="true"></div>
+          <div>
+            <span>底池</span>
+            <strong id="pot">0</strong>
+          </div>
         </div>
         <div class="community" id="community" aria-label="公共牌"></div>
         <div class="phase" id="phase">等待入座</div>
       </div>
 
       <div class="player-zone">
-        <div class="player-info">
-          <span id="playerName" class="name">你</span>
-          <span id="playerStack" class="stack">筹码 0</span>
-          <span id="playerBet" class="bet">下注 0</span>
+        <div id="playerInfo" class="player-info">
+          <div id="playerChips" class="chip-stack player-stack" aria-hidden="true"></div>
+          <div class="seat-text">
+            <span id="playerName" class="name">你</span>
+            <span id="playerStack" class="stack">筹码 0</span>
+            <span id="playerBet" class="bet">下注 0</span>
+          </div>
         </div>
         <div class="hand" id="playerHand" aria-label="你的手牌"></div>
       </div>
