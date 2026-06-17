@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>联机德州扑克牌小游戏</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="game-shell">
+    <section class="table" aria-label="德州扑克牌桌">
+      <div class="topbar">
+        <div>
+          <p class="eyebrow">Online Texas Hold'em</p>
+          <h1>联机德州扑克牌</h1>
+        </div>
+        <button id="startHandBtn" class="icon-button" type="button" aria-label="开始新手牌">▶</button>
+      </div>
+
+      <div id="lobby" class="lobby">
+        <div class="lobby-card">
+          <h2>和朋友开一桌</h2>
+          <p>创建房间后，把房间号或网页链接发给朋友。2 到 4 人到齐后，由房主开始发牌。</p>
+          <label for="nameInput">昵称</label>
+          <input id="nameInput" maxlength="12" placeholder="例如：小明">
+          <div class="lobby-actions">
+            <button id="createRoomBtn" type="button">创建房间</button>
+            <input id="roomInput" maxlength="6" placeholder="房间号">
+            <button id="joinRoomBtn" type="button">加入房间</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="room-strip">
+        <span>房间</span>
+        <strong id="roomCode">未加入</strong>
+        <button id="copyLinkBtn" type="button">复制链接</button>
+      </div>
+
+      <div class="opponents" id="opponents"></div>
+
+      <div class="board-wrap">
+        <div class="pot">
+          <span>底池</span>
+          <strong id="pot">0</strong>
+        </div>
+        <div class="community" id="community" aria-label="公共牌"></div>
+        <div class="phase" id="phase">等待入座</div>
+      </div>
+
+      <div class="player-zone">
+        <div class="player-info">
+          <span id="playerName" class="name">你</span>
+          <span id="playerStack" class="stack">筹码 0</span>
+          <span id="playerBet" class="bet">下注 0</span>
+        </div>
+        <div class="hand" id="playerHand" aria-label="你的手牌"></div>
+      </div>
+    </section>
+
+    <aside class="control-panel" aria-label="操作面板">
+      <div class="status">
+        <h2 id="statusTitle">准备联机</h2>
+        <p id="statusText">创建或加入房间后即可开始。每个人只会看到自己的手牌。</p>
+      </div>
+
+      <div class="actions">
+        <button id="foldBtn" type="button">弃牌</button>
+        <button id="callBtn" type="button">跟注</button>
+        <button id="raiseBtn" type="button">加注</button>
+      </div>
+
+      <div class="raise-box">
+        <label for="raiseAmount">加注额</label>
+        <input id="raiseAmount" type="range" min="20" max="200" step="10" value="40">
+        <output id="raiseValue" for="raiseAmount">40</output>
+      </div>
+
+      <div class="log" id="log" aria-live="polite"></div>
+    </aside>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>

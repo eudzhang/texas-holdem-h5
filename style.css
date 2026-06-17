@@ -1,0 +1,500 @@
+:root {
+  --felt: #0b6f5a;
+  --felt-dark: #06483f;
+  --rail: #2c1712;
+  --gold: #f7c76b;
+  --paper: #fff8e8;
+  --ink: #201410;
+  --muted: #8db6ad;
+  --danger: #cf4f46;
+  --panel: #151918;
+  --panel-2: #202826;
+  --line: rgba(255, 255, 255, .14);
+  --shadow: 0 18px 50px rgba(0, 0, 0, .35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: #f7f1df;
+  font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(247, 199, 107, .12), transparent 28%),
+    linear-gradient(135deg, #17201d, #080b0b 72%);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  cursor: pointer;
+}
+
+input {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: #fff;
+  background: rgba(255, 255, 255, .08);
+  outline: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.game-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 18px;
+  min-height: 100vh;
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+}
+
+.table {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  min-height: calc(100vh - 28px);
+  padding: 18px;
+  overflow: hidden;
+  border: 12px solid var(--rail);
+  border-radius: 34px;
+  background:
+    radial-gradient(ellipse at center, rgba(255, 255, 255, .1), transparent 52%),
+    repeating-radial-gradient(circle at center, rgba(255, 255, 255, .035) 0 2px, transparent 2px 16px),
+    linear-gradient(160deg, var(--felt), var(--felt-dark));
+  box-shadow: var(--shadow), inset 0 0 0 4px rgba(247, 199, 107, .24);
+}
+
+.topbar,
+.lobby-card,
+.room-strip,
+.player-info,
+.opponent-meta,
+.pot,
+.phase,
+.status,
+.raise-box {
+  backdrop-filter: blur(10px);
+  background: rgba(8, 12, 11, .54);
+  border: 1px solid var(--line);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 16px;
+}
+
+.eyebrow {
+  margin: 0 0 2px;
+  color: var(--gold);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(22px, 4vw, 38px);
+  letter-spacing: 0;
+}
+
+.icon-button {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: var(--ink);
+  background: var(--gold);
+  font-size: 19px;
+  line-height: 1;
+}
+
+.lobby {
+  position: absolute;
+  inset: 78px 18px 18px;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(4, 9, 8, .64);
+}
+
+.lobby-card {
+  display: grid;
+  gap: 12px;
+  width: min(520px, 100%);
+  padding: 18px;
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.lobby-card h2 {
+  color: var(--gold);
+  font-size: 24px;
+}
+
+.lobby-card p {
+  color: #d1dfdb;
+  line-height: 1.55;
+}
+
+.lobby-card label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.lobby-card input {
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.lobby-actions {
+  display: grid;
+  grid-template-columns: 1fr .8fr 1fr;
+  gap: 8px;
+}
+
+.lobby-actions button,
+.room-strip button {
+  min-height: 42px;
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--gold);
+  font-weight: 900;
+}
+
+.room-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: fit-content;
+  margin: 12px auto 0;
+  padding: 7px 10px;
+  border-radius: 999px;
+}
+
+.room-strip strong {
+  color: var(--gold);
+  letter-spacing: 0;
+}
+
+.room-strip button {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.opponents {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.seat {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  min-width: 0;
+}
+
+.seat.turn .opponent-meta,
+.player-info.turn {
+  border-color: rgba(247, 199, 107, .7);
+  box-shadow: 0 0 0 3px rgba(247, 199, 107, .12);
+}
+
+.opponent-meta,
+.player-info {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 10px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 14px;
+  font-size: 13px;
+}
+
+.name {
+  color: #fff;
+  font-weight: 800;
+}
+
+.stack,
+.bet,
+.state {
+  color: var(--muted);
+}
+
+.state.folded {
+  color: #ffb7b2;
+}
+
+.cards,
+.hand,
+.community {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.card {
+  display: grid;
+  place-items: center;
+  width: clamp(44px, 8vw, 74px);
+  aspect-ratio: 5 / 7;
+  border: 1px solid rgba(0, 0, 0, .24);
+  border-radius: 9px;
+  color: var(--ink);
+  background: linear-gradient(150deg, #fffdf5, var(--paper));
+  box-shadow: 0 8px 16px rgba(0, 0, 0, .28);
+  font-weight: 900;
+}
+
+.card.red {
+  color: #c92332;
+}
+
+.card.back {
+  color: transparent;
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, .18) 25%, transparent 25% 50%, rgba(255, 255, 255, .18) 50% 75%, transparent 75%),
+    linear-gradient(135deg, #244a9b, #132c68);
+  background-size: 14px 14px, auto;
+}
+
+.board-wrap {
+  align-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+}
+
+.pot {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 18px;
+  border-radius: 999px;
+}
+
+.pot strong {
+  color: var(--gold);
+  font-size: 28px;
+}
+
+.community {
+  min-height: clamp(64px, 13vw, 104px);
+}
+
+.phase {
+  padding: 7px 14px;
+  border-radius: 999px;
+  color: #dcebe7;
+}
+
+.player-zone {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.player-zone .card {
+  width: clamp(60px, 14vw, 96px);
+}
+
+.control-panel {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-height: calc(100vh - 28px);
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: linear-gradient(180deg, var(--panel), #0d1110);
+  box-shadow: var(--shadow);
+}
+
+.status,
+.raise-box {
+  padding: 14px;
+  border-radius: 14px;
+}
+
+.status h2 {
+  margin-bottom: 8px;
+  color: var(--gold);
+  font-size: 20px;
+}
+
+.status p {
+  color: #cbd8d4;
+  line-height: 1.55;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.actions button {
+  min-height: 46px;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--panel-2);
+  font-weight: 800;
+}
+
+.actions button:nth-child(1) {
+  background: #72302d;
+}
+
+.actions button:nth-child(2) {
+  background: #275f74;
+}
+
+.actions button:nth-child(3) {
+  color: var(--ink);
+  background: var(--gold);
+}
+
+.actions button:disabled,
+.icon-button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(1);
+  opacity: .45;
+}
+
+.raise-box {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.raise-box input {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: var(--gold);
+}
+
+.raise-box output {
+  color: var(--gold);
+  font-weight: 900;
+}
+
+.log {
+  display: grid;
+  gap: 8px;
+  max-height: 42vh;
+  overflow: auto;
+  padding-right: 4px;
+  color: #d5e0dd;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.log p {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .05);
+}
+
+@media (max-width: 860px) {
+  .game-shell {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .table,
+  .control-panel {
+    min-height: auto;
+  }
+
+  .table {
+    border-width: 8px;
+    border-radius: 26px;
+    padding: 12px;
+  }
+
+  .lobby {
+    inset: 68px 12px 12px;
+  }
+
+  .lobby-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .opponents {
+    gap: 8px;
+  }
+
+  .opponent-meta {
+    font-size: 11px;
+  }
+
+  .cards,
+  .hand,
+  .community {
+    gap: 5px;
+  }
+
+  .card {
+    border-radius: 7px;
+  }
+
+  .control-panel {
+    position: sticky;
+    bottom: 0;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .status p {
+    font-size: 13px;
+  }
+
+  .log {
+    max-height: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .actions {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .actions button {
+    min-width: 0;
+    padding: 0 4px;
+  }
+
+  .card {
+    font-size: 14px;
+  }
+}
