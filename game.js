@@ -173,11 +173,21 @@ function render(data) {
   els.toCall.textContent = need;
   renderCurrentAction(data);
   els.call.textContent = need === 0 ? "过牌" : `跟注 ${need}`;
+  const minRaise = Math.max(20, Number(data.minRaise || 20));
+  const maxRaise = Math.max(minRaise, (me?.stack || 0) - need - 1);
+  els.raiseAmount.min = String(minRaise);
+  els.raiseAmount.max = String(maxRaise);
+  els.raiseAmount.step = "10";
+  if (Number(els.raiseAmount.value) < minRaise || Number(els.raiseAmount.value) > maxRaise) {
+    els.raiseAmount.value = String(minRaise);
+  }
+  els.raiseValue.textContent = els.raiseAmount.value;
+  els.raise.textContent = `加注 +${els.raiseAmount.value}`;
   const canAct = Boolean(data.canAct);
   els.fold.disabled = !canAct;
   els.call.disabled = !canAct;
-  els.raise.disabled = !canAct || (me?.stack || 0) <= need;
-  els.allIn.disabled = !canAct || (me?.stack || 0) <= 0;
+  els.raise.disabled = !canAct || data.canRaise === false || (me?.stack || 0) <= need + minRaise;
+  els.allIn.disabled = !canAct || (me?.stack || 0) <= 0 || (data.canRaise === false && (me?.stack || 0) > need);
   els.statusTitle.textContent = data.statusTitle;
   els.statusText.textContent = data.statusText;
   els.log.innerHTML = data.log.map((line) => `<p>${escapeHtml(line)}</p>`).join("");
@@ -199,11 +209,14 @@ function renderSeatPanel(player, isMe) {
   const stateText = player.folded ? "已弃牌" : (player.allIn ? "全下" : player.connected ? "在线" : "离线");
   const betClass = player.bet > 0 ? "has-bet" : "";
   const winnerBadge = player.isWinner ? `<span class="winner-badge">WINNER</span>` : "";
+  const positionClass = player.position?.includes("BB") ? "bb" : player.position?.includes("SB") ? "sb" : "dealer";
+  const positionBadge = player.position ? `<span class="position-badge ${positionClass}">${player.position}</span>` : "";
   const content = `
         <div class="chip-stack seat-stack">${renderChipStack(player.stack, "seat")}</div>
         <div class="seat-main">
           <div class="seat-name-row">
             <span class="name">${isMe ? "你 · " : ""}${escapeHtml(player.name)}</span>
+            ${positionBadge}
             ${winnerBadge}
             <span class="state ${stateClass}">${stateText}</span>
           </div>
@@ -293,30 +306,36 @@ function backToModeSelect() {
 
 function startAiHand() {
   const stacks = aiGame?.players?.map((player) => player.stack > 0 ? player.stack : 1000) || [1000, 1000, 1000, 1000];
+  const dealerIndex = ((aiGame?.dealerIndex ?? -1) + 1) % 4;
   aiGame = {
     deck: shuffle(buildDeck()),
     players: [
-      { name: els.nameInput.value.trim() || "你", stack: stacks[0], bet: 0, hand: [], folded: false, allIn: false, isMe: true, connected: true },
-      { name: "AI 西座", stack: stacks[1], bet: 0, hand: [], folded: false, allIn: false, connected: true },
-      { name: "AI 北座", stack: stacks[2], bet: 0, hand: [], folded: false, allIn: false, connected: true },
-      { name: "AI 东座", stack: stacks[3], bet: 0, hand: [], folded: false, allIn: false, connected: true }
+      { name: els.nameInput.value.trim() || "你", stack: stacks[0], bet: 0, contribution: 0, hand: [], folded: false, allIn: false, acted: false, raiseAllowed: true, isMe: true, connected: true },
+      { name: "AI 西座", stack: stacks[1], bet: 0, contribution: 0, hand: [], folded: false, allIn: false, acted: false, raiseAllowed: true, connected: true },
+      { name: "AI 北座", stack: stacks[2], bet: 0, contribution: 0, hand: [], folded: false, allIn: false, acted: false, raiseAllowed: true, connected: true },
+      { name: "AI 东座", stack: stacks[3], bet: 0, contribution: 0, hand: [], folded: false, allIn: false, acted: false, raiseAllowed: true, connected: true }
     ],
     community: [],
     pot: 0,
     street: 0,
     currentBet: 0,
-    currentTurn: 0,
+    minRaise: 20,
+    currentTurn: -1,
+    dealerIndex,
+    smallBlindIndex: (dealerIndex + 1) % 4,
+    bigBlindIndex: (dealerIndex + 2) % 4,
     handOver: false,
     winners: [],
     resultText: "",
     log: []
   };
   for (let round = 0; round < 2; round++) aiGame.players.forEach((player) => player.hand.push(aiGame.deck.pop()));
-  aiPay(aiGame.players[1], 10);
-  aiPay(aiGame.players[2], 20);
+  aiPay(aiGame.players[aiGame.smallBlindIndex], 10);
+  aiPay(aiGame.players[aiGame.bigBlindIndex], 20);
   aiGame.currentBet = 20;
-  aiLog("AI 西座小盲 10，AI 北座大盲 20。");
-  renderAi();
+  aiGame.currentTurn = aiNextActiveIndex(aiGame.bigBlindIndex);
+  aiLog(`${aiGame.players[dealerIndex].name} 在庄家位。${aiGame.players[aiGame.smallBlindIndex].name} 下小盲 10，${aiGame.players[aiGame.bigBlindIndex].name} 下大盲 20。`);
+  aiContinue();
 }
 
 function aiPlayerAction(type) {
@@ -325,80 +344,138 @@ function aiPlayerAction(type) {
   const need = Math.max(0, aiGame.currentBet - me.bet);
   if (type === "fold") {
     me.folded = true;
+    me.acted = true;
+    me.raiseAllowed = false;
     aiLog("你弃牌。");
   } else if (type === "call") {
     aiPay(me, need);
+    me.acted = true;
+    me.raiseAllowed = false;
     aiLog(need === 0 ? "你过牌。" : `你跟注 ${need}。`);
   } else if (type === "raise") {
     const raiseBy = Number(els.raiseAmount.value);
+    if (!me.raiseAllowed || raiseBy < aiGame.minRaise || need + raiseBy >= me.stack) return;
     aiPay(me, need + raiseBy);
     aiGame.currentBet = me.bet;
+    aiGame.minRaise = raiseBy;
+    aiResetActionAfterRaise(0);
+    me.acted = true;
+    me.raiseAllowed = false;
     aiLog(`你加注到 ${me.bet}。`);
   } else if (type === "allin") {
     const pushed = me.stack;
+    const oldBet = aiGame.currentBet;
     aiPay(me, me.stack);
-    if (me.bet > aiGame.currentBet) aiGame.currentBet = me.bet;
+    if (me.bet > aiGame.currentBet) {
+      aiGame.currentBet = me.bet;
+      const raiseSize = me.bet - oldBet;
+      if (raiseSize >= aiGame.minRaise) {
+        aiGame.minRaise = raiseSize;
+        aiResetActionAfterRaise(0);
+      }
+    }
+    me.acted = true;
+    me.raiseAllowed = false;
     aiLog(`你推了 ${pushed}。`);
   }
-  if (aiOnlyOneLeft()) return renderAi();
-  aiRunOpponents();
+  aiAdvance();
+  aiContinue();
 }
 
-function aiRunOpponents() {
-  for (let i = 1; i < aiGame.players.length; i++) {
-    aiAct(aiGame.players[i]);
-    if (aiOnlyOneLeft()) return renderAi();
+function aiContinue() {
+  let guard = 0;
+  while (!aiGame.handOver && aiGame.currentTurn !== 0 && guard < 100) {
+    aiAct(aiGame.currentTurn);
+    aiAdvance();
+    guard += 1;
   }
-  if (!aiGame.players[0].folded && aiGame.currentBet > aiGame.players[0].bet) {
-    aiGame.currentTurn = 0;
-    aiLog("电脑加注，行动回到你。");
-    renderAi();
-    return;
-  }
-  if (aiShouldRunOutAllIn()) {
-    while (aiGame.community.length < 5) aiGame.community.push(aiGame.deck.pop());
-    aiShowdown();
-    renderAi();
-    return;
-  }
-  aiNextStreet();
   renderAi();
 }
 
-function aiAct(player) {
+function aiAct(index) {
+  const player = aiGame.players[index];
   if (player.folded || player.allIn || aiGame.handOver) return;
   const need = Math.max(0, aiGame.currentBet - player.bet);
   const strength = aiStrength(player);
   if (need > 0 && strength + Math.random() * 0.35 < need / Math.max(1, player.stack + player.bet) + 0.2) {
     player.folded = true;
+    player.acted = true;
+    player.raiseAllowed = false;
     aiLog(`${player.name} 弃牌。`);
     return;
   }
-  if (need === 0 && strength > 0.78 && player.stack > 40 && Math.random() > 0.5) {
+  if (need === 0 && player.raiseAllowed && strength > 0.78 && player.stack > 40 && Math.random() > 0.5) {
     const raiseBy = Math.min(player.stack, randomStep(30, 90));
     aiPay(player, raiseBy);
     aiGame.currentBet = player.bet;
+    aiGame.minRaise = raiseBy;
+    aiResetActionAfterRaise(index);
+    player.acted = true;
+    player.raiseAllowed = false;
     aiLog(`${player.name} 加注到 ${player.bet}。`);
     return;
   }
   aiPay(player, need);
+  player.acted = true;
+  player.raiseAllowed = false;
   aiLog(need === 0 ? `${player.name} 过牌。` : `${player.name} 跟注 ${need}。`);
+}
+
+function aiAdvance() {
+  if (aiOnlyOneLeft()) return;
+  const active = aiGame.players.filter((player) => !player.folded);
+  if (active.every((player) => player.allIn || player.folded) || aiShouldRunOutAllIn() && aiBettingRoundClosed()) {
+    aiRunOutBoard();
+    return aiShowdown();
+  }
+  if (aiBettingRoundClosed()) return aiNextStreet();
+  aiGame.currentTurn = aiNextActiveIndex(aiGame.currentTurn);
+}
+
+function aiBettingRoundClosed() {
+  return aiGame.players
+    .filter((player) => !player.folded && !player.allIn)
+    .every((player) => player.acted && player.bet === aiGame.currentBet);
+}
+
+function aiNextActiveIndex(from) {
+  for (let step = 1; step <= aiGame.players.length; step++) {
+    const index = (from + step + aiGame.players.length) % aiGame.players.length;
+    const player = aiGame.players[index];
+    if (!player.folded && !player.allIn) return index;
+  }
+  return -1;
+}
+
+function aiResetActionAfterRaise(raiserIndex) {
+  aiGame.players.forEach((player, index) => {
+    if (index !== raiserIndex && !player.folded && !player.allIn) {
+      player.acted = false;
+      player.raiseAllowed = true;
+    }
+  });
 }
 
 function aiNextStreet() {
   aiGame.players.forEach((player) => {
     player.bet = 0;
+    player.acted = false;
+    player.raiseAllowed = true;
   });
   aiGame.currentBet = 0;
+  aiGame.minRaise = 20;
   if (aiGame.street === 0) {
+    aiGame.deck.pop();
     aiGame.community.push(aiGame.deck.pop(), aiGame.deck.pop(), aiGame.deck.pop());
     aiGame.street = 1;
     aiLog("翻牌。");
   } else if (aiGame.street === 1) {
+    aiGame.deck.pop();
     aiGame.community.push(aiGame.deck.pop());
     aiGame.street = 2;
     aiLog("转牌。");
   } else if (aiGame.street === 2) {
+    aiGame.deck.pop();
     aiGame.community.push(aiGame.deck.pop());
     aiGame.street = 3;
     aiLog("河牌。");
@@ -406,7 +483,7 @@ function aiNextStreet() {
     aiShowdown();
     return;
   }
-  aiGame.currentTurn = 0;
+  aiGame.currentTurn = aiNextActiveIndex(aiGame.dealerIndex);
 }
 
 function aiShowdown() {
@@ -416,14 +493,12 @@ function aiShowdown() {
     .sort((a, b) => compareScores(b.score, a.score));
   const top = ranked[0];
   const tied = ranked.filter((entry) => compareScores(entry.score, top.score) === 0);
-  const share = Math.floor(aiGame.pot / tied.length);
-  tied.forEach((entry) => {
-    entry.player.stack += share;
-  });
+  const payouts = aiDistributePots();
   aiGame.handOver = true;
   aiGame.currentTurn = -1;
   aiGame.winners = tied.map((entry) => entry.player);
-  aiGame.resultText = `${tied.map((entry) => entry.player.name).join("、")} 凭 ${HAND_NAMES[top.score.rank]} 赢得 ${share * tied.length}`;
+  const won = tied.reduce((sum, entry) => sum + (payouts.get(entry.player) || 0), 0);
+  aiGame.resultText = `${tied.map((entry) => entry.player.name).join("、")} 凭 ${HAND_NAMES[top.score.rank]} 赢得 ${won}`;
   aiLog(`摊牌：${aiGame.resultText}。`);
 }
 
@@ -446,6 +521,39 @@ function aiShouldRunOutAllIn() {
   return active.some((player) => player.allIn) && active.filter((player) => !player.allIn).length <= 1;
 }
 
+function aiRunOutBoard() {
+  if (aiGame.community.length === 0) {
+    aiGame.deck.pop();
+    aiGame.community.push(aiGame.deck.pop(), aiGame.deck.pop(), aiGame.deck.pop());
+  }
+  while (aiGame.community.length < 5) {
+    aiGame.deck.pop();
+    aiGame.community.push(aiGame.deck.pop());
+  }
+}
+
+function aiDistributePots() {
+  const payouts = new Map();
+  const levels = [...new Set(aiGame.players.map((player) => player.contribution).filter((value) => value > 0))].sort((a, b) => a - b);
+  let previous = 0;
+  levels.forEach((level) => {
+    const contributors = aiGame.players.filter((player) => player.contribution >= level);
+    const amount = (level - previous) * contributors.length;
+    const eligible = contributors.filter((player) => !player.folded);
+    const ranked = eligible.map((player) => ({ player, score: evaluateBest([...player.hand, ...aiGame.community]) })).sort((a, b) => compareScores(b.score, a.score));
+    const winners = ranked.filter((entry) => compareScores(entry.score, ranked[0].score) === 0);
+    const share = Math.floor(amount / winners.length);
+    let remainder = amount - share * winners.length;
+    winners.forEach((entry) => {
+      const extra = remainder-- > 0 ? 1 : 0;
+      entry.player.stack += share + extra;
+      payouts.set(entry.player, (payouts.get(entry.player) || 0) + share + extra);
+    });
+    previous = level;
+  });
+  return payouts;
+}
+
 function renderAi() {
   const me = aiGame.players[0];
   render({
@@ -461,13 +569,16 @@ function renderAi() {
       isMe: index === 0,
       isTurn: index === aiGame.currentTurn,
       isWinner: aiGame.winners?.includes(player),
+      position: index === aiGame.dealerIndex && index === aiGame.smallBlindIndex ? "D/SB" : index === aiGame.dealerIndex ? "D" : index === aiGame.smallBlindIndex ? "SB" : index === aiGame.bigBlindIndex ? "BB" : "",
       hand: player.hand.map((card) => (index === 0 || aiGame.handOver && !player.folded) ? cardView(card) : { hidden: true })
     })),
     community: aiGame.community.map(cardView),
     pot: aiGame.pot,
     phase: aiGame.handOver ? "本手结束" : STREETS[aiGame.street],
     currentBet: aiGame.currentBet,
+    minRaise: aiGame.minRaise,
     canAct: !aiGame.handOver && aiGame.currentTurn === 0 && !me.folded && !me.allIn,
+    canRaise: me.raiseAllowed,
     isHost: true,
     resultText: aiGame.handOver ? aiGame.resultText : "",
     statusTitle: aiGame.handOver ? "AI 练习结束" : (aiGame.currentTurn === 0 ? "轮到你行动" : "AI 思考中"),
@@ -480,6 +591,7 @@ function aiPay(player, amount) {
   const paid = Math.min(player.stack, Math.max(0, amount));
   player.stack -= paid;
   player.bet += paid;
+  player.contribution += paid;
   aiGame.pot += paid;
   if (player.stack === 0) player.allIn = true;
 }
@@ -696,6 +808,7 @@ els.raise.addEventListener("click", () => sendAction("raise"));
 els.allIn.addEventListener("click", () => sendAction("allin"));
 els.raiseAmount.addEventListener("input", () => {
   els.raiseValue.textContent = els.raiseAmount.value;
+  els.raise.textContent = `加注 +${els.raiseAmount.value}`;
 });
 
 if (appMode === "online") {

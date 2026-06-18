@@ -23,6 +23,8 @@ const RANKS = [
 ];
 const STREETS = ["翻牌前", "翻牌", "转牌", "河牌"];
 const HAND_NAMES = ["高牌", "一对", "两对", "三条", "顺子", "同花", "葫芦", "四条", "同花顺"];
+const SMALL_BLIND = 10;
+const BIG_BLIND = 20;
 
 const server = http.createServer(async (req, res) => {
   try {
@@ -57,7 +59,11 @@ function createRoom(body) {
     pot: 0,
     street: 0,
     currentBet: 0,
+    minRaise: BIG_BLIND,
     currentTurn: -1,
+    dealerIndex: -1,
+    smallBlindIndex: -1,
+    bigBlindIndex: -1,
     handOver: true,
     winners: [],
     resultText: "",
@@ -90,23 +96,36 @@ function startHand(body) {
     player.folded = false;
     player.allIn = false;
     player.acted = false;
+    player.raiseAllowed = true;
+    player.contribution = 0;
   });
   room.deck = shuffle(buildDeck());
   room.community = [];
   room.pot = 0;
   room.street = 0;
   room.currentBet = 0;
+  room.minRaise = BIG_BLIND;
   room.handOver = false;
   room.winners = [];
   room.resultText = "";
   for (let round = 0; round < 2; round++) {
     room.players.forEach((player) => player.hand.push(room.deck.pop()));
   }
-  postBlind(room, 0, 10);
-  postBlind(room, 1 % room.players.length, 20);
-  room.currentBet = 20;
-  room.currentTurn = nextActiveIndex(room, 1 % room.players.length);
-  addLog(room, "新手牌开始，小盲 10，大盲 20。");
+  room.dealerIndex = nextSeatIndex(room, room.dealerIndex);
+  if (room.players.length === 2) {
+    room.smallBlindIndex = room.dealerIndex;
+    room.bigBlindIndex = nextSeatIndex(room, room.dealerIndex);
+  } else {
+    room.smallBlindIndex = nextSeatIndex(room, room.dealerIndex);
+    room.bigBlindIndex = nextSeatIndex(room, room.smallBlindIndex);
+  }
+  postBlind(room, room.smallBlindIndex, SMALL_BLIND);
+  postBlind(room, room.bigBlindIndex, BIG_BLIND);
+  room.currentBet = Math.max(...room.players.map((player) => player.bet));
+  room.currentTurn = room.players.length === 2
+    ? nextActiveIndex(room, room.bigBlindIndex)
+    : nextActiveIndex(room, room.bigBlindIndex);
+  addLog(room, `${room.players[room.dealerIndex].name} 在庄家位。${room.players[room.smallBlindIndex].name} 下小盲 ${SMALL_BLIND}，${room.players[room.bigBlindIndex].name} 下大盲 ${BIG_BLIND}。`);
   broadcast(room);
   return { ok: true };
 }
@@ -122,30 +141,50 @@ function playerAction(body) {
   if (body.type === "fold") {
     player.folded = true;
     player.acted = true;
+    player.raiseAllowed = false;
     addLog(room, `${player.name} 弃牌。`);
   } else if (body.type === "call") {
     pay(room, player, need);
     player.acted = true;
+    player.raiseAllowed = false;
     addLog(room, need === 0 ? `${player.name} 过牌。` : `${player.name} 跟注 ${need}。`);
   } else if (body.type === "raise") {
-    const raiseBy = clamp(Number(body.raiseBy || 20), 20, 200);
+    if (!player.raiseAllowed) throw new Error("短码全下未达到最小加注，本轮只可跟注或弃牌。");
+    const raiseBy = Number(body.raiseBy);
+    if (!Number.isFinite(raiseBy) || raiseBy < room.minRaise) throw new Error(`本轮最少加注 ${room.minRaise}。`);
+    if (need + raiseBy >= player.stack) throw new Error("筹码不足时请使用“推了”。");
     pay(room, player, need + raiseBy);
     room.currentBet = player.bet;
+    room.minRaise = raiseBy;
     room.players.forEach((seat) => {
-      if (!seat.folded && !seat.allIn && seat.id !== player.id) seat.acted = false;
+      if (!seat.folded && !seat.allIn && seat.id !== player.id) {
+        seat.acted = false;
+        seat.raiseAllowed = true;
+      }
     });
     player.acted = true;
+    player.raiseAllowed = false;
     addLog(room, `${player.name} 加注到 ${player.bet}。`);
   } else if (body.type === "allin") {
+    if (!player.raiseAllowed && player.bet + player.stack > room.currentBet) throw new Error("当前加注权未重新开放，只可跟注或弃牌。");
     const pushed = player.stack;
+    const oldBet = room.currentBet;
     pay(room, player, player.stack);
     if (player.bet > room.currentBet) {
       room.currentBet = player.bet;
-      room.players.forEach((seat) => {
-        if (!seat.folded && !seat.allIn && seat.id !== player.id) seat.acted = false;
-      });
+      const raiseSize = player.bet - oldBet;
+      if (raiseSize >= room.minRaise) {
+        room.minRaise = raiseSize;
+        room.players.forEach((seat) => {
+          if (!seat.folded && !seat.allIn && seat.id !== player.id) {
+            seat.acted = false;
+            seat.raiseAllowed = true;
+          }
+        });
+      }
     }
     player.acted = true;
+    player.raiseAllowed = false;
     addLog(room, `${player.name} 推了 ${pushed}。`);
   } else {
     throw new Error("未知操作。");
@@ -159,12 +198,12 @@ function advance(room) {
   const active = room.players.filter((player) => !player.folded);
   if (active.length === 1) return award(room, active[0], `${active[0].name} 赢得底池 ${room.pot}。`);
   if (active.every((player) => player.allIn || player.folded)) {
-    while (room.community.length < 5) room.community.push(room.deck.pop());
+    runOutBoard(room);
     return showdown(room);
   }
   if (isBettingRoundClosed(room)) {
     if (shouldRunOutAllIn(room)) {
-      while (room.community.length < 5) room.community.push(room.deck.pop());
+      runOutBoard(room);
       return showdown(room);
     }
     return nextStreet(room);
@@ -187,24 +226,29 @@ function nextStreet(room) {
   room.players.forEach((player) => {
     player.bet = 0;
     player.acted = false;
+    player.raiseAllowed = true;
   });
   room.currentBet = 0;
+  room.minRaise = BIG_BLIND;
   if (room.street === 0) {
+    burn(room);
     room.community.push(room.deck.pop(), room.deck.pop(), room.deck.pop());
     room.street = 1;
     addLog(room, "翻牌。");
   } else if (room.street === 1) {
+    burn(room);
     room.community.push(room.deck.pop());
     room.street = 2;
     addLog(room, "转牌。");
   } else if (room.street === 2) {
+    burn(room);
     room.community.push(room.deck.pop());
     room.street = 3;
     addLog(room, "河牌。");
   } else {
     return showdown(room);
   }
-  room.currentTurn = nextActiveIndex(room, -1);
+  room.currentTurn = nextActiveIndex(room, room.dealerIndex);
 }
 
 function showdown(room) {
@@ -214,15 +258,14 @@ function showdown(room) {
     .sort((a, b) => compareScores(b.score, a.score));
   const top = ranked[0];
   const tied = ranked.filter((entry) => compareScores(entry.score, top.score) === 0);
-  const share = Math.floor(room.pot / tied.length);
-  tied.forEach((entry) => {
-    entry.player.stack += share;
-  });
+  const payouts = distributePots(room);
   room.handOver = true;
   room.currentTurn = -1;
-  const winners = tied.map((entry) => entry.player.name).join("、");
-  room.winners = tied.map((entry) => entry.player.id);
-  room.resultText = `${winners} 凭 ${HAND_NAMES[top.score.rank]} 赢得 ${share * tied.length}`;
+  const paidPlayers = ranked.filter((entry) => payouts.has(entry.player.id));
+  room.winners = paidPlayers.map((entry) => entry.player.id);
+  room.resultText = paidPlayers
+    .map((entry) => `${entry.player.name} 凭 ${HAND_NAMES[entry.score.rank]} 赢得 ${payouts.get(entry.player.id)}`)
+    .join("；");
   addLog(room, `摊牌：${room.resultText}。`);
 }
 
@@ -245,8 +288,57 @@ function pay(room, player, amount) {
   const paid = Math.min(player.stack, Math.max(0, amount));
   player.stack -= paid;
   player.bet += paid;
+  player.contribution += paid;
   room.pot += paid;
   if (player.stack === 0) player.allIn = true;
+}
+
+function burn(room) {
+  room.deck.pop();
+}
+
+function runOutBoard(room) {
+  if (room.community.length === 0) {
+    burn(room);
+    room.community.push(room.deck.pop(), room.deck.pop(), room.deck.pop());
+  }
+  while (room.community.length < 5) {
+    burn(room);
+    room.community.push(room.deck.pop());
+  }
+}
+
+function nextSeatIndex(room, from) {
+  return (from + 1 + room.players.length) % room.players.length;
+}
+
+function distributePots(room) {
+  const payouts = new Map();
+  const levels = [...new Set(room.players.map((player) => player.contribution).filter((value) => value > 0))].sort((a, b) => a - b);
+  let previous = 0;
+  for (const level of levels) {
+    const contributors = room.players.filter((player) => player.contribution >= level);
+    const amount = (level - previous) * contributors.length;
+    const eligible = contributors.filter((player) => !player.folded);
+    if (!eligible.length) {
+      previous = level;
+      continue;
+    }
+    const ranked = eligible
+      .map((player) => ({ player, score: evaluateBest([...player.hand, ...room.community]) }))
+      .sort((a, b) => compareScores(b.score, a.score));
+    const winners = ranked.filter((entry) => compareScores(entry.score, ranked[0].score) === 0);
+    const share = Math.floor(amount / winners.length);
+    let remainder = amount - share * winners.length;
+    winners.forEach((entry) => {
+      const extra = remainder > 0 ? 1 : 0;
+      remainder -= extra;
+      entry.player.stack += share + extra;
+      payouts.set(entry.player.id, (payouts.get(entry.player.id) || 0) + share + extra);
+    });
+    previous = level;
+  }
+  return payouts;
 }
 
 function nextActiveIndex(room, from) {
@@ -268,6 +360,8 @@ function makePlayer(name) {
     folded: false,
     allIn: false,
     acted: false,
+    raiseAllowed: true,
+    contribution: 0,
     connected: false
   };
 }
@@ -307,13 +401,16 @@ function snapshot(room, viewerId) {
       isMe: player.id === viewerId,
       isTurn: index === room.currentTurn,
       isWinner: room.winners.includes(player.id),
+      position: index === room.dealerIndex && index === room.smallBlindIndex ? "D/SB" : index === room.dealerIndex ? "D" : index === room.smallBlindIndex ? "SB" : index === room.bigBlindIndex ? "BB" : "",
       hand: visibleHand(room, player, viewerId)
     })),
     community: room.community.map(cardView),
     pot: room.pot,
     phase: room.handOver ? "等待开局" : STREETS[room.street],
     currentBet: room.currentBet,
+    minRaise: room.minRaise,
     canAct,
+    canRaise: Boolean(canAct && me.raiseAllowed),
     resultText: room.handOver ? room.resultText : "",
     statusTitle: statusTitle(room, viewerId),
     statusText: statusText(room, viewerId),
