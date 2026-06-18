@@ -1378,3 +1378,40 @@ body[data-players="8"] .opponents {
   visibility: hidden;
   pointer-events: none;
 }
+
+/* Wide mobile webviews (notably iPhone 11 in WeChat) fill the width. */
+.mobile-wide .topbar {
+  top: var(--mobile-edge-y);
+  left: 6%;
+}
+
+.mobile-wide .room-strip {
+  top: calc(var(--mobile-edge-y) + 18px);
+}
+
+.mobile-wide .opponents,
+.mobile-wide body[data-players="5"] .opponents,
+.mobile-wide body[data-players="6"] .opponents,
+.mobile-wide body[data-players="7"] .opponents,
+.mobile-wide body[data-players="8"] .opponents {
+  top: calc(var(--mobile-edge-y) + 86px);
+  left: 6%;
+  right: 29%;
+}
+
+.mobile-wide .player-zone {
+  bottom: var(--mobile-edge-y);
+  width: 44%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+}
+
+.mobile-wide .player-info {
+  align-self: center;
+}
+
+.mobile-wide .control-panel {
+  right: 5.5%;
+  bottom: var(--mobile-edge-y);
+}

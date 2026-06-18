@@ -51,8 +51,15 @@ function fitGameStage() {
   const viewport = window.visualViewport;
   const width = viewport?.width || window.innerWidth;
   const height = viewport?.height || window.innerHeight;
-  const scale = Math.min(width / STAGE_WIDTH, height / STAGE_HEIGHT);
+  const mobileWide = width > height && height <= 500 && width / height > 1.9;
+  const scale = mobileWide
+    ? Math.max(width / STAGE_WIDTH, height / STAGE_HEIGHT)
+    : Math.min(width / STAGE_WIDTH, height / STAGE_HEIGHT);
+  const visibleStageHeight = height / scale;
+  const verticalCrop = Math.max(0, (STAGE_HEIGHT - visibleStageHeight) / 2);
+  document.documentElement.classList.toggle("mobile-wide", mobileWide);
   document.documentElement.style.setProperty("--game-scale", String(scale));
+  document.documentElement.style.setProperty("--mobile-edge-y", `${verticalCrop + 12}px`);
 }
 
 fitGameStage();
