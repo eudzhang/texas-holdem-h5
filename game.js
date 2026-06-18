@@ -44,6 +44,21 @@ let reconnectTimer;
 let appMode = null;
 let aiGame = null;
 
+const STAGE_WIDTH = 1365;
+const STAGE_HEIGHT = 768;
+
+function fitGameStage() {
+  const viewport = window.visualViewport;
+  const width = viewport?.width || window.innerWidth;
+  const height = viewport?.height || window.innerHeight;
+  const scale = Math.min(width / STAGE_WIDTH, height / STAGE_HEIGHT);
+  document.documentElement.style.setProperty("--game-scale", String(scale));
+}
+
+fitGameStage();
+window.addEventListener("resize", fitGameStage);
+window.visualViewport?.addEventListener("resize", fitGameStage);
+
 const urlRoom = new URLSearchParams(location.search).get("room");
 if (urlRoom) {
   appMode = "online";
@@ -154,6 +169,7 @@ function render(data) {
   document.body.dataset.players = String(data.players.length || 0);
   document.body.dataset.maxPlayers = String(data.maxPlayers || (appMode === "ai" ? 4 : Number(els.maxPlayers.value || 4)));
   els.lobby.hidden = joined;
+  document.body.classList.toggle("lobby-open", !joined);
   els.roomCode.textContent = data.maxPlayers ? `${data.roomCode} · ${data.players.length}/${data.maxPlayers}人` : data.roomCode;
   els.copyLink.hidden = appMode === "ai";
   els.copyLink.disabled = appMode === "ai" || !joined;

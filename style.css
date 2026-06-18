@@ -761,112 +761,6 @@ h1 {
   background: rgba(255, 255, 255, .05);
 }
 
-@media (max-width: 860px) {
-  .game-shell {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .table,
-  .control-panel {
-    min-height: auto;
-  }
-
-  .table {
-    border-width: 8px;
-    border-radius: 26px;
-    padding: 12px;
-  }
-
-  .lobby {
-    inset: 68px 12px 12px;
-  }
-
-  .lobby-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .opponents {
-    gap: 8px;
-  }
-
-  .opponent-meta {
-    font-size: 11px;
-  }
-
-  .opponent-meta,
-  .player-info {
-    grid-template-columns: auto minmax(0, 1fr);
-    padding: 8px;
-  }
-
-  .seat-money-grid {
-    font-size: 11px;
-  }
-
-  .seat-money-grid strong {
-    font-size: 14px;
-  }
-
-  .seat-stack {
-    --chip-size: 22px;
-    height: 28px;
-  }
-
-  .player-stack,
-  .pot-stack {
-    --chip-size: 28px;
-  }
-
-  .current-action {
-    padding: 7px 12px;
-    font-size: 13px;
-  }
-
-  .pot strong {
-    font-size: 28px;
-  }
-
-  .cards,
-  .hand,
-  .community {
-    gap: 5px;
-  }
-
-  .card {
-    border-radius: 7px;
-  }
-
-  .control-panel {
-    position: sticky;
-    bottom: 0;
-    border-radius: 18px 18px 0 0;
-  }
-
-  .status p {
-    font-size: 13px;
-  }
-
-  .log {
-    max-height: 120px;
-  }
-}
-
-@media (max-width: 480px) {
-  .actions {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .actions button {
-    min-width: 0;
-    padding: 0 4px;
-  }
-
-  .card {
-    font-size: 14px;
-  }
-}
-
 /* Fixed landscape casino-table layout */
 body {
   min-height: 100vh;
@@ -893,14 +787,15 @@ body::before {
 
 .game-shell {
   position: fixed;
-  inset: 50%;
-  width: min(100vw, calc(100vh * 16 / 9));
-  height: min(100vh, calc(100vw * 9 / 16));
+  top: 50%;
+  left: 50%;
+  width: 1365px;
+  height: 768px;
   min-height: auto;
   display: block;
   padding: 0;
-  transform: translate(-50%, -50%);
-  aspect-ratio: 16 / 9;
+  transform: translate(-50%, -50%) scale(var(--game-scale, 1));
+  transform-origin: center;
   overflow: hidden;
 }
 
@@ -1361,4 +1256,125 @@ body[data-players="8"] .seat .card {
 body[data-players="7"] .board-wrap,
 body[data-players="8"] .board-wrap {
   top: 59%;
+}
+
+/* The game uses one stable 1365x768 coordinate system and scales as a unit. */
+.eyebrow { font-size: 11px; }
+h1 { font-size: 29px; }
+.icon-button { width: 44px; height: 44px; font-size: 18px; }
+.home-button { min-height: 38px; padding: 0 14px; font-size: 14px; }
+.seat-money-grid { font-size: 12px; }
+.seat-money-grid strong { font-size: 18px; }
+.current-action { padding: 7px 14px; font-size: 14px; }
+.pot { min-width: 164px; padding: 7px 14px; }
+.pot strong { font-size: 35px; }
+.community { gap: 12px; }
+.phase { padding: 6px 12px; font-size: 13px; }
+.card { width: 74px; font-size: 16px; }
+.player-zone .card { width: 85px; }
+.status h2 { font-size: 18px; }
+.status p { font-size: 13px; }
+.decision-card strong { font-size: 34px; }
+.actions button { min-height: 46px; font-size: 14px; }
+.log { font-size: 12px; }
+.result-banner span { font-size: 14px; }
+.result-banner strong { font-size: 25px; }
+
+body[data-players="5"] .opponent-meta,
+body[data-players="6"] .opponent-meta,
+body[data-players="7"] .opponent-meta,
+body[data-players="8"] .opponent-meta {
+  font-size: 11px;
+}
+
+body[data-players="5"] .seat-money-grid,
+body[data-players="6"] .seat-money-grid,
+body[data-players="7"] .seat-money-grid,
+body[data-players="8"] .seat-money-grid {
+  font-size: 10px;
+}
+
+body[data-players="5"] .seat-money-grid strong,
+body[data-players="6"] .seat-money-grid strong,
+body[data-players="7"] .seat-money-grid strong,
+body[data-players="8"] .seat-money-grid strong {
+  font-size: 14px;
+}
+
+body[data-players="5"] .seat .card,
+body[data-players="6"] .seat .card,
+body[data-players="7"] .seat .card,
+body[data-players="8"] .seat .card {
+  width: 50px;
+}
+
+.board-wrap,
+body[data-players="7"] .board-wrap,
+body[data-players="8"] .board-wrap {
+  top: 61%;
+  display: block;
+  width: 440px;
+  height: 150px;
+}
+
+.board-wrap .current-action {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.board-wrap .current-action.result-banner {
+  left: 50%;
+  width: 430px;
+  transform: translateX(-50%);
+}
+
+.board-wrap .pot {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.board-wrap .community {
+  position: absolute;
+  top: 50px;
+  left: 50%;
+  min-height: auto;
+  transform: translateX(-50%);
+}
+
+.board-wrap .phase {
+  position: absolute;
+  top: 38px;
+  left: 0;
+}
+
+.player-zone {
+  bottom: 1.5%;
+}
+
+.seat .card { width: 60px; }
+.community .card { width: 68px; }
+.player-zone .card { width: 75px; }
+
+.opponents,
+body[data-players="5"] .opponents,
+body[data-players="6"] .opponents,
+body[data-players="7"] .opponents,
+body[data-players="8"] .opponents {
+  right: 27%;
+}
+
+.lobby {
+  inset: 24% 32% 22%;
+  z-index: 20;
+  overflow: hidden;
+}
+
+.lobby-open .opponents,
+.lobby-open .board-wrap,
+.lobby-open .player-zone,
+.lobby-open .control-panel {
+  visibility: hidden;
+  pointer-events: none;
 }
